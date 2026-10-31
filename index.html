@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RAFINOOR CSV Maker · Free Column Layout</title>
+  <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0f172a; --card: #1e293b; --border: #334155;
+      --primary: #0ea5e9; --ok: #22c55e; --warn: #f59e0b; --danger: #ef4444;
+      --text: #e2e8f0; --muted: #94a3b8;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Hind Siliguri', Inter, system-ui, sans-serif;
+      background: linear-gradient(160deg, #0f172a 0%, #1e3a5f 50%, #0f172a 100%);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 16px;
+    }
+    .wrap { max-width: 1100px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; margin: 0 0 4px; font-weight: 700; }
+    .sub { color: var(--muted); margin-bottom: 16px; font-size: 0.95rem; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 14px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+    }
+    .card h2 {
+      font-size: 1.05rem; margin: 0 0 12px;
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    }
+    .badge {
+      display: inline-block; padding: 2px 10px; border-radius: 999px;
+      font-size: 12px; font-weight: 700;
+    }
+    .badge-ok { background: #14532d; color: #86efac; }
+    .badge-bad { background: #7f1d1d; color: #fecaca; }
+    .badge-info { background: #1e3a8a; color: #bfdbfe; }
+    .badge-warn { background: #78350f; color: #fde68a; }
+    .drop {
+      border: 2px dashed #475569; border-radius: 14px; padding: 24px 16px;
+      text-align: center; cursor: pointer; transition: .2s; background: #0f172a88;
+    }
+    .drop:hover, .drop.drag { border-color: var(--primary); background: #0ea5e922; }
+    .drop input { display: none; }
+    .btn {
+      border: 0; border-radius: 10px; padding: 9px 14px; font-weight: 700;
+      cursor: pointer; font-family: inherit; font-size: 13px;
+    }
+    .btn-primary { background: linear-gradient(135deg, #0284c7, #0ea5e9); color: #fff; }
+    .btn-ok { background: linear-gradient(135deg, #15803d, #22c55e); color: #fff; }
+    .btn-ghost { background: #334155; color: #e2e8f0; }
+    .btn-warn { background: linear-gradient(135deg, #b45309, #f59e0b); color: #111; }
+    .btn-danger { background: #7f1d1d; color: #fecaca; }
+    .btn-sm { padding: 5px 8px; font-size: 12px; border-radius: 8px; }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .hint {
+      background: #0f172a; border-left: 4px solid var(--warn);
+      padding: 10px 12px; border-radius: 0 10px 10px 0;
+      font-size: 13px; color: #fde68a; margin-bottom: 12px;
+    }
+    .okbox { border-left-color: var(--ok); color: #bbf7d0; }
+    .status { font-size: 13px; color: var(--muted); margin-top: 8px; }
+    .mono { font-family: ui-monospace, Menlo, monospace; font-size: 12px; word-break: break-all; }
+    .col-list { display: flex; flex-direction: column; gap: 8px; }
+    .col-item {
+      display: grid;
+      grid-template-columns: 36px 28px minmax(100px, 1fr) minmax(140px, 1.2fr) 90px 120px;
+      gap: 8px; align-items: center;
+      background: #0f172a;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 8px 10px;
+      transition: box-shadow .15s, border-color .15s, opacity .15s;
+    }
+    .col-item.dragging { opacity: .55; border-color: var(--primary); box-shadow: 0 0 0 2px #0ea5e966; }
+    .col-item.drag-over { border-color: var(--ok); box-shadow: 0 0 0 2px #22c55e66; }
+    .col-item.bad-key { border-color: #ef444488; }
+    .handle { cursor: grab; user-select: none; text-align: center; font-size: 18px; color: var(--muted); line-height: 1; }
+    .handle:active { cursor: grabbing; }
+    .idx { color: var(--muted); font-size: 12px; text-align: center; }
+    input.rename, input.orig-show {
+      width: 100%; background: #1e293b; border: 1px solid #475569;
+      color: #f8fafc; border-radius: 8px; padding: 7px 10px;
+      font-family: inherit; font-size: 13px;
+    }
+    input.rename.ok { border-color: var(--ok); }
+    input.rename.bad { border-color: var(--danger); background: #450a0a44; }
+    input.orig-show { background: transparent; border-color: transparent; color: var(--muted); pointer-events: none; font-size: 12px; }
+    .col-actions { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+    .col-head {
+      display: grid;
+      grid-template-columns: 36px 28px minmax(100px, 1fr) minmax(140px, 1.2fr) 90px 120px;
+      gap: 8px; padding: 0 10px 6px; color: var(--muted); font-size: 11px; font-weight: 700;
+    }
+    @media (max-width: 780px) {
+      .col-head { display: none; }
+      .col-item { grid-template-columns: 28px 1fr; }
+      .col-item .idx { display: none; }
+      .col-item .handle { grid-row: 1 / span 3; }
+      .col-item .orig-wrap, .col-item .rename-wrap, .col-item .status-wrap, .col-item .col-actions { grid-column: 2; }
+      .col-item .col-actions { justify-content: flex-start; }
+    }
+    .preview {
+      max-height: 260px; overflow: auto; font-size: 12px;
+      background: #0f172a; border-radius: 10px; padding: 8px;
+    }
+    .preview table { border-collapse: collapse; min-width: 500px; width: 100%; }
+    .preview th, .preview td {
+      border-bottom: 1px solid #334155; padding: 5px 8px; text-align: left; white-space: nowrap;
+    }
+    .preview th { color: #7dd3fc; position: sticky; top: 0; background: #0f172a; }
+    .toggle-row {
+      display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+      margin-bottom: 10px; font-size: 13px;
+    }
+    .toggle-row label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+    .grid-tpl { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 6px; }
+    .chip {
+      background: #0f172a; border: 1px solid #475569; border-radius: 8px;
+      padding: 6px 8px; font-size: 12px; text-align: center; cursor: pointer;
+    }
+    .chip:hover { border-color: var(--primary); }
+    .chip.req { border-color: #0ea5e9; color: #7dd3fc; font-weight: 700; }
+    footer { text-align: center; color: var(--muted); font-size: 12px; margin: 18px 0 8px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>📡 RAFINOOR CSV Maker</h1>
+    <p class="sub">কলাম ইচ্ছামতো সাজান · মুছুন · নাম দিন · শুধু Firebase-নিষিদ্ধ অক্ষর ( <code>. # $ / [ ]</code> ) কাটা হবে — ফিক্স ম্যাপিং বাধ্যতামূলক নয়</p>
+
+    <div class="card">
+      <div class="hint">
+        <b>নতুন:</b> কলাম <b>☰ ধরে টেনে</b> উপরে/নিচে সাজান। অপ্রয়োজনীয় কলাম <b>🗑 ডিলিট</b> করুন।  
+        ডিলিট করা কলাম নিচে থেকে <b>ফেরত আনতে</b> পারবেন। নাম সম্পূর্ণ আপনার ইচ্ছায়।
+      </div>
+      <div class="hint okbox">
+        RAFINOOR Import-এ সাধারণত <b>SiteID, LAT, LONG</b> রাখলে ভালো। বাকি কলাম আপনার মতো সাজান।
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>1️⃣ CSV আপলোড</h2>
+      <div class="drop" id="dropZone">
+        <div style="font-size:28px;margin-bottom:6px">📂</div>
+        <div><b>CSV ড্রপ করুন</b> অথবা ক্লিক করে সিলেক্ট</div>
+        <div class="status">.csv / .txt · UTF-8</div>
+        <input type="file" id="fileInput" accept=".csv,.txt,text/csv,text/plain" />
+      </div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn btn-ghost" type="button" id="btnTplBasic">📄 খালি টেমপ্লেট</button>
+        <button class="btn btn-ghost" type="button" id="btnTplFull">📄 পূর্ণ টেমপ্লেট</button>
+      </div>
+    </div>
+
+    <div class="card" id="mapCard" style="display:none">
+      <h2>2️⃣ কলাম সাজান / নাম / মুছুন <span id="hdrBadge"></span></h2>
+      <p class="status" id="fileInfo"></p>
+
+      <div class="toggle-row">
+        <label title="চালু = Site ID → SiteID টাইপ ম্যাপিং; বন্ধ = শুধু নিষিদ্ধ অক্ষর কাটবে">
+          <input type="checkbox" id="optAlias" />
+          পরিচিত নাম অ্যালিয়াস (ঐচ্ছিক — ডিফল্ট বন্ধ)
+        </label>
+        <label>
+          <input type="checkbox" id="optKeepDeleted" checked />
+          ডিলিট করা কলাম সাইডবারে রাখো (ফেরত আনতে)
+        </label>
+      </div>
+
+      <div class="row" style="margin-bottom:12px">
+        <button class="btn btn-warn" type="button" id="btnAuto">✨ শুধু নিষিদ্ধ অক্ষর সেফ করো</button>
+        <button class="btn btn-ok" type="button" id="btnDownload">✅ সেফ CSV ডাউনলোড</button>
+        <button class="btn btn-ghost" type="button" id="btnAddCol">➕ খালি কলাম যোগ</button>
+        <button class="btn btn-ghost" type="button" id="btnReset">🔄 রিসেট</button>
+      </div>
+      <div class="status" id="dlStatus"></div>
+
+      <div class="col-head" style="margin-top:12px">
+        <span></span><span>#</span><span>মূল হেডার</span><span>নতুন নাম (ইচ্ছামতো)</span><span>স্ট্যাটাস</span><span>অ্যাকশন</span>
+      </div>
+      <div class="col-list" id="colList"></div>
+
+      <div id="deletedBox" style="display:none;margin-top:14px">
+        <h3 style="font-size:14px;margin:0 0 8px;color:#fde68a">🗑️ ডিলিট করা কলাম — ক্লিক করে ফেরত আনুন</h3>
+        <div class="row" id="deletedList"></div>
+      </div>
+    </div>
+
+    <div class="card" id="previewCard" style="display:none">
+      <h2>3️⃣ প্রিভিউ (বর্তমান কলাম অর্ডার)</h2>
+      <div class="preview" id="previewBox"></div>
+    </div>
+
+    <div class="card">
+      <h2>📋 সাজেশন (ক্লিক = নতুন কলাম যোগ)</h2>
+      <div class="grid-tpl" id="suggested"></div>
+    </div>
+
+    <footer>RAFINOOR CSV Maker · ফ্রি কলাম লেআউট · লোকাল টুল</footer>
+  </div>
+
+<script>
+(function () {
+  'use strict';
+
+  var FORBIDDEN_RE = /[.#$/\[\]]/;
+
+  var SUGGESTED = [
+    { name: 'SiteID', req: true },
+    { name: 'LAT', req: true },
+    { name: 'LONG', req: true },
+    { name: 'Address', req: false },
+    { name: 'AssignedTo', req: false },
+    { name: 'CurrentStatus', req: false },
+    { name: 'Gate', req: false },
+    { name: 'Key', req: false },
+    { name: 'BTS', req: false },
+    { name: 'Battery', req: false },
+    { name: 'Roof', req: false },
+    { name: 'SG', req: false },
+    { name: 'Division', req: false },
+    { name: 'District', req: false },
+    { name: 'Thana', req: false },
+    { name: 'PostOffice', req: false },
+    { name: 'Village', req: false },
+    { name: 'Zone', req: false },
+    { name: 'Note1', req: false },
+    { name: 'Note2', req: false },
+    { name: 'No_of_Rectifier_at_site', req: false },
+    { name: 'Highlight', req: false }
+  ];
+
+  var ALIAS = {
+    siteid: 'SiteID', site_id: 'SiteID', 'site id': 'SiteID', id: 'SiteID',
+    lat: 'LAT', latitude: 'LAT',
+    long: 'LONG', lng: 'LONG', lon: 'LONG', longitude: 'LONG',
+    address: 'Address', completeaddress: 'Address', fulladdress: 'Address',
+    assignedto: 'AssignedTo', assignto: 'AssignedTo', assigned: 'AssignedTo', team: 'AssignedTo',
+    currentstatus: 'CurrentStatus', status: 'CurrentStatus', workstatus: 'CurrentStatus',
+    gate: 'Gate', key: 'Key', bts: 'BTS', btskey: 'BTS', battery: 'Battery',
+    roof: 'Roof', sg: 'SG',
+    division: 'Division', district: 'District', thana: 'Thana', upazila: 'Thana',
+    postoffice: 'PostOffice', 'post office': 'PostOffice', village: 'Village', zone: 'Zone',
+    'no of rectifier at site': 'No_of_Rectifier_at_site',
+    'no. of rectifier at site': 'No_of_Rectifier_at_site',
+    'number of rectifier at site': 'No_of_Rectifier_at_site',
+    noofrectifieratsite: 'No_of_Rectifier_at_site',
+    rectifier: 'No_of_Rectifier_at_site',
+    highlight: 'Highlight'
+  };
+
+  var state = { columns: [], deleted: [], rows: [], fileName: '' };
+  var dragId = null;
+
+  function $(id) { return document.getElementById(id); }
+  function uid() { return 'c' + Math.random().toString(36).slice(2, 9) + Date.now().toString(36); }
+
+  function isKeySafe(name) {
+    var n = String(name == null ? '' : name).trim();
+    if (!n) return false;
+    if (FORBIDDEN_RE.test(n)) return false;
+    return true;
+  }
+
+  function normKey(s) {
+    return String(s || '').toLowerCase().replace(/^\uFEFF/, '').replace(/\s+/g, ' ').trim();
+  }
+  function compactKey(s) {
+    return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  }
+
+  function sanitizeKey(raw, useAlias) {
+    var s = String(raw == null ? '' : raw).trim().replace(/^\uFEFF/, '');
+    if (!s) return 'Column';
+    if (useAlias) {
+      var nk = normKey(s);
+      if (ALIAS[nk]) return ALIAS[nk];
+      var ck = compactKey(s);
+      if (ALIAS[ck]) return ALIAS[ck];
+    }
+    s = s.replace(/[.#$/\[\]]/g, '_').replace(/\s+/g, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '');
+    if (!s) s = 'Column';
+    s = s.replace(/[.#$/\[\]]/g, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '');
+    return s || 'Column';
+  }
+
+  function ensureUnique(names) {
+    var seen = {};
+    return names.map(function (n, i) {
+      var base = String(n || ('Column_' + (i + 1))).trim() || ('Column_' + (i + 1));
+      base = base.replace(/[.#$/\[\]]/g, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '') || ('Column_' + (i + 1));
+      var out = base, c = 2;
+      while (seen[out.toLowerCase()]) { out = base + '_' + c; c++; }
+      seen[out.toLowerCase()] = true;
+      return out;
+    });
+  }
+
+  function parseCSV(text) {
+    var rows = [], row = [], field = '', inQuotes = false;
+    text = String(text || '').replace(/^\uFEFF/, '');
+    for (var i = 0; i < text.length; i++) {
+      var ch = text[i];
+      if (ch === '"') {
+        if (inQuotes && text[i + 1] === '"') { field += '"'; i++; }
+        else inQuotes = !inQuotes;
+      } else if (ch === ',' && !inQuotes) {
+        row.push(field); field = '';
+      } else if ((ch === '\n' || ch === '\r') && !inQuotes) {
+        if (ch === '\r' && text[i + 1] === '\n') i++;
+        row.push(field); field = '';
+        if (row.some(function (v) { return String(v).trim() !== ''; })) rows.push(row);
+        row = [];
+      } else field += ch;
+    }
+    row.push(field);
+    if (row.some(function (v) { return String(v).trim() !== ''; })) rows.push(row);
+    return rows;
+  }
+
+  function csvEscape(v) {
+    var s = String(v == null ? '' : v);
+    if (/[",\n\r]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+    return s;
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  function useAlias() { return !!($('optAlias') && $('optAlias').checked); }
+  function keepDeleted() { return !!($('optKeepDeleted') && $('optKeepDeleted').checked); }
+
+  (function () {
+    var host = $('suggested');
+    host.innerHTML = SUGGESTED.map(function (s) {
+      return '<div class="chip' + (s.req ? ' req' : '') + '" data-name="' + escapeHtml(s.name) + '">' +
+        s.name + (s.req ? ' *' : '') + '</div>';
+    }).join('');
+    host.addEventListener('click', function (e) {
+      var chip = e.target.closest('.chip');
+      if (!chip) return;
+      addEmptyColumn(chip.getAttribute('data-name'));
+    });
+  })();
+
+  function loadFile(file) {
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function (e) {
+      try {
+        var rows = parseCSV(e.target.result);
+        if (!rows.length) { alert('ফাইল খালি।'); return; }
+        var headers = rows[0].map(function (h) {
+          return String(h).trim().replace(/^\uFEFF/, '');
+        });
+        var dataRows = rows.slice(1);
+        var alias = useAlias();
+
+        state.rows = dataRows;
+        state.fileName = file.name || 'sites.csv';
+        state.deleted = [];
+        state.columns = headers.map(function (h, i) {
+          return { id: uid(), original: h, name: sanitizeKey(h, alias), sourceIndex: i };
+        });
+        var uniq = ensureUnique(state.columns.map(function (c) { return c.name; }));
+        state.columns.forEach(function (c, i) { c.name = uniq[i]; });
+
+        $('mapCard').style.display = '';
+        $('previewCard').style.display = '';
+        $('fileInfo').textContent =
+          'ফাইল: ' + state.fileName + ' · ' + state.columns.length + ' কলাম · ' + dataRows.length + ' সারি';
+        $('optKeepDeleted').checked = true;
+
+        renderColumns();
+        renderPreview();
+        renderDeleted();
+        setStatus('✅ আপলোড OK। ☰ টেনে সাজান · 🗑 মুছুন · নিচ থেকে ফেরত আনুন · নাম ইচ্ছামতো।', true);
+      } catch (err) {
+        alert('পার্স এরর: ' + (err.message || err));
+      }
+    };
+    reader.onerror = function () { alert('ফাইল পড়া যায়নি।'); };
+    reader.readAsText(file, 'UTF-8');
+  }
+
+  function renderColumns() {
+    var list = $('colList');
+    list.innerHTML = '';
+
+    state.columns.forEach(function (col, index) {
+      var ok = isKeySafe(col.name);
+      var item = document.createElement('div');
+      item.className = 'col-item' + (ok ? '' : ' bad-key');
+      item.draggable = true;
+      item.dataset.id = col.id;
+
+      var statusHtml;
+      if (!ok) statusHtml = '<span class="badge badge-bad">নিষিদ্ধ</span>';
+      else if (String(col.original) !== String(col.name)) statusHtml = '<span class="badge badge-info">পরিবর্তিত</span>';
+      else statusHtml = '<span class="badge badge-ok">OK</span>';
+
+      item.innerHTML =
+        '<div class="handle" title="টেনে সাজান">☰</div>' +
+        '<div class="idx">' + (index + 1) + '</div>' +
+        '<div class="orig-wrap"><input class="orig-show" readonly value="' + escapeHtml(col.original || '(নতুন)') + '" /></div>' +
+        '<div class="rename-wrap"><input class="rename ' + (ok ? 'ok' : 'bad') + '" data-id="' + col.id + '" value="' + escapeHtml(col.name) + '" /></div>' +
+        '<div class="status-wrap">' + statusHtml + '</div>' +
+        '<div class="col-actions">' +
+          '<button type="button" class="btn btn-ghost btn-sm" data-act="up" data-id="' + col.id + '">↑</button>' +
+          '<button type="button" class="btn btn-ghost btn-sm" data-act="down" data-id="' + col.id + '">↓</button>' +
+          '<button type="button" class="btn btn-danger btn-sm" data-act="del" data-id="' + col.id + '">🗑</button>' +
+        '</div>';
+
+      list.appendChild(item);
+    });
+
+    list.querySelectorAll('input.rename').forEach(function (inp) {
+      inp.addEventListener('input', function () {
+        var id = inp.getAttribute('data-id');
+        var col = state.columns.find(function (c) { return c.id === id; });
+        if (!col) return;
+        col.name = inp.value;
+        var ok = isKeySafe(col.name);
+        inp.classList.toggle('ok', ok);
+        inp.classList.toggle('bad', !ok);
+        var parent = inp.closest('.col-item');
+        if (parent) parent.classList.toggle('bad-key', !ok);
+        updateBadge();
+        renderPreview();
+      });
+    });
+
+    list.querySelectorAll('[data-act]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var id = btn.getAttribute('data-id');
+        var act = btn.getAttribute('data-act');
+        if (act === 'del') deleteColumn(id);
+        else if (act === 'up') moveColumn(id, -1);
+        else if (act === 'down') moveColumn(id, 1);
+      });
+    });
+
+    list.querySelectorAll('.col-item').forEach(function (el) {
+      el.addEventListener('dragstart', function (e) {
+        dragId = el.dataset.id;
+        el.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        try { e.dataTransfer.setData('text/plain', dragId); } catch (err) {}
+      });
+      el.addEventListener('dragend', function () {
+        el.classList.remove('dragging');
+        list.querySelectorAll('.col-item').forEach(function (x) { x.classList.remove('drag-over'); });
+        dragId = null;
+      });
+      el.addEventListener('dragover', function (e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        el.classList.add('drag-over');
+      });
+      el.addEventListener('dragleave', function () { el.classList.remove('drag-over'); });
+      el.addEventListener('drop', function (e) {
+        e.preventDefault();
+        el.classList.remove('drag-over');
+        var targetId = el.dataset.id;
+        var fromId = dragId || (e.dataTransfer && e.dataTransfer.getData('text/plain'));
+        if (!fromId || fromId === targetId) return;
+        reorderById(fromId, targetId);
+      });
+    });
+
+    updateBadge();
+  }
+
+  function reorderById(fromId, targetId) {
+    var from = state.columns.findIndex(function (c) { return c.id === fromId; });
+    var to = state.columns.findIndex(function (c) { return c.id === targetId; });
+    if (from < 0 || to < 0) return;
+    var item = state.columns.splice(from, 1)[0];
+    state.columns.splice(to, 0, item);
+    renderColumns();
+    renderPreview();
+    setStatus('↕️ কলাম সরানো হয়েছে।', true);
+  }
+
+  function moveColumn(id, dir) {
+    var i = state.columns.findIndex(function (c) { return c.id === id; });
+    if (i < 0) return;
+    var j = i + dir;
+    if (j < 0 || j >= state.columns.length) return;
+    var t = state.columns[i];
+    state.columns[i] = state.columns[j];
+    state.columns[j] = t;
+    renderColumns();
+    renderPreview();
+  }
+
+  function deleteColumn(id) {
+    var i = state.columns.findIndex(function (c) { return c.id === id; });
+    if (i < 0) return;
+    var removed = state.columns.splice(i, 1)[0];
+    if (keepDeleted()) state.deleted.push(removed);
+    renderColumns();
+    renderDeleted();
+    renderPreview();
+    setStatus('🗑️ কলাম সরানো' + (keepDeleted() ? ' — নিচ থেকে ফেরত আনতে পারবেন' : '') + '।', true);
+  }
+
+  function restoreColumn(id) {
+    var i = state.deleted.findIndex(function (c) { return c.id === id; });
+    if (i < 0) return;
+    var col = state.deleted.splice(i, 1)[0];
+    var names = state.columns.map(function (c) { return c.name; });
+    names.push(col.name);
+    col.name = ensureUnique(names).pop();
+    state.columns.push(col);
+    renderColumns();
+    renderDeleted();
+    renderPreview();
+    setStatus('↩️ কলাম ফেরত — ☰ দিয়ে পছন্দের জায়গায় টানুন।', true);
+  }
+
+  function renderDeleted() {
+    var box = $('deletedBox');
+    var list = $('deletedList');
+    if (!state.deleted.length) {
+      box.style.display = 'none';
+      list.innerHTML = '';
+      return;
+    }
+    box.style.display = '';
+    list.innerHTML = state.deleted.map(function (c) {
+      return '<button type="button" class="btn btn-ghost btn-sm" data-restore="' + c.id + '">↩️ ' +
+        escapeHtml(c.name || c.original || 'Column') + '</button>';
+    }).join('');
+    list.querySelectorAll('[data-restore]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        restoreColumn(btn.getAttribute('data-restore'));
+      });
+    });
+  }
+
+  function addEmptyColumn(presetName) {
+    if (!state.columns.length && !state.rows.length) {
+      state.rows = [];
+      state.fileName = state.fileName || 'custom.csv';
+      $('mapCard').style.display = '';
+      $('previewCard').style.display = '';
+    }
+    var name = presetName || ('Column_' + (state.columns.length + 1));
+    name = sanitizeKey(name, false);
+    var names = state.columns.map(function (c) { return c.name; }).concat([name]);
+    name = ensureUnique(names).pop();
+    state.columns.push({ id: uid(), original: presetName || '', name: name, sourceIndex: -1 });
+    renderColumns();
+    renderPreview();
+    setStatus('➕ কলাম যোগ — নাম বদলান বা টেনে সরান।', true);
+  }
+
+  function autoSanitizeAll() {
+    if (!state.columns.length) { alert('আগে CSV আপলোড করুন।'); return; }
+    var alias = useAlias();
+    state.columns.forEach(function (c) {
+      var base = c.name && c.name.trim() ? c.name : c.original;
+      c.name = sanitizeKey(base, alias);
+    });
+    var uniq = ensureUnique(state.columns.map(function (c) { return c.name; }));
+    state.columns.forEach(function (c, i) { c.name = uniq[i]; });
+    renderColumns();
+    renderPreview();
+    setStatus('✨ নিষিদ্ধ অক্ষর সরানো হয়েছে। কলাম অর্ডার/নাম আপনার ইচ্ছায়।', true);
+  }
+
+  function updateBadge() {
+    var names = state.columns.map(function (c) { return c.name; });
+    var allOk = names.every(isKeySafe);
+    var dups = false;
+    var s = {};
+    for (var i = 0; i < names.length; i++) {
+      var k = String(names[i] || '').toLowerCase();
+      if (s[k]) { dups = true; break; }
+      s[k] = 1;
+    }
+
+    if (!state.columns.length) {
+      $('hdrBadge').innerHTML = '<span class="badge badge-warn">কোনো কলাম নেই</span>';
+      $('btnDownload').disabled = true;
+      return;
+    }
+    if (allOk && !dups) {
+      $('hdrBadge').innerHTML = '<span class="badge badge-ok">' + state.columns.length + ' কলাম · সেফ ✓</span>';
+      $('btnDownload').disabled = false;
+    } else if (dups) {
+      $('hdrBadge').innerHTML = '<span class="badge badge-bad">ডুপ্লিকেট নাম</span>';
+      $('btnDownload').disabled = true;
+      setStatus('⚠️ একই নাম একাধিকবার।', false);
+    } else {
+      $('hdrBadge').innerHTML = '<span class="badge badge-bad">নিষিদ্ধ অক্ষর</span>';
+      $('btnDownload').disabled = true;
+      setStatus('⚠️ . # $ / [ ] আছে — Auto Safe বা নাম ঠিক করুন।', false);
+    }
+  }
+
+  function setStatus(msg, ok) {
+    var el = $('dlStatus');
+    el.textContent = msg;
+    el.style.color = ok ? '#86efac' : '#fde68a';
+  }
+
+  function cellValue(row, col) {
+    if (col.sourceIndex < 0) return '';
+    return row[col.sourceIndex] != null ? row[col.sourceIndex] : '';
+  }
+
+  function renderPreview() {
+    if (!state.columns.length) {
+      $('previewBox').innerHTML = '<span class="status">কোনো কলাম নেই।</span>';
+      return;
+    }
+    var names = state.columns.map(function (c) { return c.name; });
+    var slice = state.rows.slice(0, 5);
+    var html = '<table><thead><tr>';
+    names.forEach(function (n) { html += '<th>' + escapeHtml(n) + '</th>'; });
+    html += '</tr></thead><tbody>';
+    if (!slice.length) {
+      html += '<tr>' + names.map(function () { return '<td>—</td>'; }).join('') + '</tr>';
+    } else {
+      slice.forEach(function (row) {
+        html += '<tr>';
+        state.columns.forEach(function (col) {
+          html += '<td>' + escapeHtml(cellValue(row, col)) + '</td>';
+        });
+        html += '</tr>';
+      });
+    }
+    html += '</tbody></table>';
+    $('previewBox').innerHTML = html;
+  }
+
+  function downloadCleanCSV() {
+    if (!state.columns.length) { alert('কমপক্ষে একটি কলাম রাখুন।'); return; }
+    var alias = useAlias();
+    state.columns.forEach(function (c) {
+      if (!isKeySafe(c.name)) c.name = sanitizeKey(c.name || c.original, alias);
+    });
+    var uniq = ensureUnique(state.columns.map(function (c) { return c.name; }));
+    state.columns.forEach(function (c, i) { c.name = uniq[i]; });
+    renderColumns();
+    renderPreview();
+
+    var names = state.columns.map(function (c) { return c.name; });
+    var lines = [names.map(csvEscape).join(',')];
+    for (var r = 0; r < state.rows.length; r++) {
+      lines.push(state.columns.map(function (col) {
+        return csvEscape(cellValue(state.rows[r], col));
+      }).join(','));
+    }
+
+    var blob = new Blob(['\uFEFF' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    var base = (state.fileName || 'sites').replace(/\.csv$/i, '');
+    a.download = base + '_firebase_safe.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
+    setStatus('✅ ডাউনলোড: ' + a.download + ' · ' + names.length + ' কলাম (আপনার অর্ডার)', true);
+  }
+
+  function downloadTemplate(full) {
+    var cols = full
+      ? SUGGESTED.map(function (s) { return s.name; })
+      : ['SiteID', 'LAT', 'LONG', 'Address', 'AssignedTo', 'CurrentStatus'];
+    var sample = full
+      ? ['DHK_X1234', '23.8103', '90.4125', 'Sample Address', 'Team A', 'Normal', 'Yes', 'Key1', 'BTS1', 'OK', 'Concrete', 'SG1', 'Dhaka', 'Dhaka', 'Gulshan', 'Gulshan', 'Sample', 'Zone1', '', '', '2', '']
+      : ['DHK_X1234', '23.8103', '90.4125', 'Sample Address', 'Team A', 'Normal'];
+    while (sample.length < cols.length) sample.push('');
+    var lines = [cols.map(csvEscape).join(','), sample.slice(0, cols.length).map(csvEscape).join(',')];
+    var blob = new Blob(['\uFEFF' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = full ? 'RAFINOOR_template_full.csv' : 'RAFINOOR_template_basic.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1500);
+  }
+
+  function resetAll() {
+    state = { columns: [], deleted: [], rows: [], fileName: '' };
+    $('mapCard').style.display = 'none';
+    $('previewCard').style.display = 'none';
+    $('fileInput').value = '';
+    $('dlStatus').textContent = '';
+    $('deletedList').innerHTML = '';
+    $('deletedBox').style.display = 'none';
+  }
+
+  $('btnAuto').addEventListener('click', autoSanitizeAll);
+  $('btnDownload').addEventListener('click', downloadCleanCSV);
+  $('btnReset').addEventListener('click', resetAll);
+  $('btnAddCol').addEventListener('click', function () { addEmptyColumn(''); });
+  $('btnTplBasic').addEventListener('click', function () { downloadTemplate(false); });
+  $('btnTplFull').addEventListener('click', function () { downloadTemplate(true); });
+  $('optAlias').addEventListener('change', function () {
+    setStatus(useAlias()
+      ? 'অ্যালিয়াস চালু — পরের Auto Safe / নতুন আপলোডে ম্যাপ হবে।'
+      : 'অ্যালিয়াস বন্ধ — শুধু নিষিদ্ধ অক্ষর কাটা, নাম আপনার মতো।', true);
+  });
+
+  var drop = $('dropZone');
+  var fileInput = $('fileInput');
+  drop.addEventListener('click', function () { fileInput.click(); });
+  fileInput.addEventListener('change', function () {
+    if (fileInput.files && fileInput.files[0]) loadFile(fileInput.files[0]);
+  });
+  ['dragenter', 'dragover'].forEach(function (ev) {
+    drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add('drag'); });
+  });
+  ['dragleave', 'drop'].forEach(function (ev) {
+    drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove('drag'); });
+  });
+  drop.addEventListener('drop', function (e) {
+    var f = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) loadFile(f);
+  });
+})();
+</script>
+</body>
+</html>
